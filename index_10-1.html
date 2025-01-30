@@ -78,6 +78,18 @@
             // 花びらの配列
             const petals = [];
 
+
+            //pointeraction
+            const rippleEffects = []; // 波紋エフェクトの配列
+            // マウス移動イベントのリスナーを追加
+            window.addEventListener('mousemove', (event) => {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                let mouseX = (event.clientX / width) * 50 - 25;
+                let mouseY = -(event.clientY / height) * 50 + 25;
+                rippleEffects.push({ x: mouseX, y: mouseY, radius: 0, progress: 0 });
+            });
+
             // GLTFローダー
             const gltfLoader = new GLTFLoader();
             gltfLoader.load('./models/kirschbluede_1.glb', (gltf) => {
@@ -129,28 +141,67 @@
 
             composer.addPass(bokehPass);
 
-            // アニメーション処理
+            // // アニメーション処理
+            // function animatePetals() {
+            //     petals.forEach(petal => {
+            //         // 舞い上がる動き
+            //         petal.position.y += 0.02;
+
+            //         // **ゆるやかな風の影響（左右に揺れる）**
+            //         petal.position.x += petal.windSpeed; // 少しずつ横にずれる
+
+            //         // 回転
+            //         petal.rotation.x += 0.005;
+            //         petal.rotation.y += 0.003;
+
+            //         // 上に行きすぎたらリセット
+            //         if (petal.position.y > 40) {
+            //             petal.position.y = -20;
+            //             petal.position.x = Math.random() * 50 - 25;
+            //             petal.position.z = Math.random() * 40 - 20;
+            //             petal.windSpeed = (Math.random() - 0.5) * 0.02; // 新しい風の影響
+            //         }
+            //     });
+            // }
+
+
             function animatePetals() {
+                rippleEffects.forEach((ripple, index) => {
+                    ripple.progress += 0.03; // 波紋の広がる速度
+                    ripple.radius = 5 * (1 - Math.exp(-3 * ripple.progress));
+                    if (ripple.progress > 1) {
+                        rippleEffects.splice(index, 1);
+                    }
+                });
+
                 petals.forEach(petal => {
-                    // 舞い上がる動き
-                    petal.position.y += 0.02;
-
-                    // **ゆるやかな風の影響（左右に揺れる）**
-                    petal.position.x += petal.windSpeed; // 少しずつ横にずれる
-
-                    // 回転
-                    petal.rotation.x += 0.005;
-                    petal.rotation.y += 0.003;
-
-                    // 上に行きすぎたらリセット
+                    rippleEffects.forEach(ripple => {
+                        let dx = petal.position.x - ripple.x;
+                        let dy = petal.position.y - ripple.y;
+                        let distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance < ripple.radius && distance > ripple.radius - 1) {
+                            let factor = Math.exp(-2 * (distance / 100));
+                            petal.position.x += dx * factor * 0.026; // 速度を30%アップ
+                            petal.position.y += dy * factor * 0.026;
+                        }
+                    });
+                    
+                    // ゆっくりと上昇する動き（1.5倍の速度に変更）
+                    petal.position.y += 0.0175;
+                    petal.position.x += petal.windSpeed;
+                    petal.rotation.x += 0.0005;
+                    petal.rotation.y += 0.0005;
+                    
+                    // 画面上部に達したら位置をリセット
                     if (petal.position.y > 40) {
                         petal.position.y = -20;
                         petal.position.x = Math.random() * 50 - 25;
                         petal.position.z = Math.random() * 40 - 20;
-                        petal.windSpeed = (Math.random() - 0.5) * 0.02; // 新しい風の影響
+                        petal.windSpeed = (Math.random() - 0.5) * 0.01;
                     }
                 });
             }
+
 
             // ウィンドウサイズ変更対応
             window.addEventListener('resize', () => {
