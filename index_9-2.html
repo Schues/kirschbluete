@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>桜の花びらアニメーション（ボケ効果）</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #myCanvas {
+            display: block;
+        }
+    </style>
+
+    <!-- インポートマップの設定 -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "./js/three.module.js",
+                "three/examples/jsm/loaders/GLTFLoader.js": "./js/loaders/GLTFLoader.js",
+                "three/examples/jsm/postprocessing/EffectComposer.js": "./js/postprocessing/EffectComposer.js",
+                "three/examples/jsm/postprocessing/RenderPass.js": "./js/postprocessing/RenderPass.js",
+                "three/examples/jsm/postprocessing/ShaderPass.js": "./js/postprocessing/ShaderPass.js",
+                "three/examples/jsm/shaders/BokehShader2.js": "./js/shaders/BokehShader2.js"
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <canvas id="myCanvas"></canvas>
+
+    <script type="module">
+        import * as THREE from "three";
+        import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+        import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+        import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+        import { BokehShader, BokehDepthShader } from "three/examples/jsm/shaders/BokehShader2.js";
+        import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
+        
+
+        window.addEventListener("DOMContentLoaded", init);
+
+        function init() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            // レンダラーの設定
+            const canvasElement = document.querySelector('#myCanvas');
+            const renderer = new THREE.WebGLRenderer({
+                antialias: true,
+                alpha: true,
+                canvas: canvasElement,
+            });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(width, height);
+            renderer.setClearColor(0x000000, 0);
+
+            // シーンの作成
+            const scene = new THREE.Scene();
+
+            // カメラの作成
+            const camera = new THREE.PerspectiveCamera(30, width / height, 1, 500);
+            camera.position.set(0, 15, 50);
+
+            // 環境光
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+            scene.add(ambientLight);
+
+            // 花びらの配列
+            const petals = [];
+
+            // GLTFローダー
+            const gltfLoader = new GLTFLoader();
+            gltfLoader.load('./models/kirschbluede_1.glb', (gltf) => {
+                for (let i = 0; i < 70; i++) {
+                    const petal = gltf.scene.clone();
+                    let scale = Math.random() * 0.8 + 0.5;
+                    petal.scale.set(scale, scale, scale);
+
+                    // 初期位置設定（画面全体に分布）
+                    petal.position.set(
+                        Math.random() * 50 - 25,
+                        Math.random() * 60 - 20,
+                        Math.random() * 40 - 20
+                    );
+
+                    petal.rotation.set(
+                        Math.random() * Math.PI,
+                        Math.random() * Math.PI,
+                        Math.random() * Math.PI
+                    );
+
+                    petal.traverse((node) => {
+                        if (node.isMesh) {
+                            node.material.transparent = true;
+                            node.material.opacity = 0.3;
+                        }
+                    });
+
+                    petal.windSpeed = (Math.random() - 0.5) * 0.02;
+
+                    petals.push(petal);
+                    scene.add(petal);
+                }
+            });
+
+            // ポストプロセッシングのセットアップ
+            const composer = new EffectComposer(renderer);
+            const renderPass = new RenderPass(scene, camera);
+            composer.addPass(renderPass);
+
+            // BokehShader2（ボケ効果）
+            const bokehPass = new ShaderPass(BokehShader);
+            bokehPass.uniforms["focus"].value = 20.0;     // ピントの距離
+            bokehPass.uniforms["aperture"].value = 0.015; // 絞り（値を小さくするとボケが強くなる）
+            bokehPass.uniforms["maxblur"].value = 0.01;   // 最大のボケ量
+            bokehPass.uniforms["aspect"].value = width / height;
+            composer.addPass(bokehPass);
+
+            // アニメーション処理
+            function animatePetals() {
+                petals.forEach(petal => {
+                    petal.position.y += 0.02;
+                    petal.position.x += petal.windSpeed;
+                    petal.rotation.x += 0.005;
+                    petal.rotation.y += 0.003;
+
+                    if (petal.position.y > 40) {
+                        petal.position.y = -20;
+                        petal.position.x = Math.random() * 50 - 25;
+                        petal.position.z = Math.random() * 40 - 20;
+                        petal.windSpeed = (Math.random() - 0.5) * 0.02;
+                    }
+                });
+            }
+
+            // ウィンドウサイズ変更対応
+            window.addEventListener('resize', () => {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                renderer.setSize(width, height);
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                bokehPass.uniforms["aspect"].value = width / height;
+            });
+
+            // 描画ループ
+            function tick() {
+                animatePetals();
+                composer.render();  // エフェクト適用レンダリング
+                requestAnimationFrame(tick);
+            }
+
+            tick();
+        }
+    </script>
+</body>
+
+</html>

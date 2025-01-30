@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      /* スクロールバーを隠す */
+      height: 100vh;
+      /* 高さを100%に */
+      width: 100%;
+      /* 幅を100%に */
+    }
+  </style>
+</head>
+
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    // アンチエイリアスを有効化
+    const renderer = new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: true
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x000000, 0); // 背景を透明にする
+    document.body.appendChild(renderer.domElement);
+
+    const flowerPetals = [];
+    const numPetals = 30; // 花びらの数を増やして画面を埋め尽くす
+
+    // 3Dの花びらを作成
+    const createPetalGeometry = () => {
+      const geometry = new THREE.PlaneGeometry(0.1, 0.2, 10, 10); // セグメント数を10x10に増やす
+      const petalShape = new THREE.Shape();
+      petalShape.moveTo(0, 0);
+      petalShape.bezierCurveTo(0.1, 0.15, 0.3, 0.15, 0.25, 0);
+      petalShape.bezierCurveTo(0.3, -0.15, 0.1, -0.15, 0, 0);
+      const petalGeometry = new THREE.ShapeGeometry(petalShape);
+      const vertices = petalGeometry.attributes.position.array;
+      for (let i = 0; i < vertices.length; i += 3) {
+        const zOffset = Math.sin((vertices[i] + 0.1) * Math.PI) * 0.05;
+        vertices[i + 2] += zOffset;
+      }
+      petalGeometry.attributes.position.needsUpdate = true;
+      return petalGeometry;
+    };
+    const petalMaterial = new THREE.MeshBasicMaterial({
+      color: 0xFFF0F5,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.9,
+      depthWrite: false
+    });
+    const petalSpeeds = [];
+    
+    // 花びらをランダムに生成
+    for (let i = 0; i < numPetals; i++) {
+      const petal = new THREE.Mesh(createPetalGeometry(), petalMaterial);
+      petal.position.set(
+        (Math.random() - 0.5) * 10, // 横方向の範囲を広げる
+        Math.random() * 5, // 縦方向の範囲を広げる
+        (Math.random() - 0.5) * 10 // 奥行きの範囲を広げる
+      );
+      petal.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+      scene.add(petal);
+      flowerPetals.push(petal);
+      petalSpeeds.push({
+        rotationSpeedX: (Math.random() - 0.5) * 0.01 + 0.005,
+        rotationSpeedY: (Math.random() - 0.5) * 0.01 + 0.005,
+        rotationSpeedZ: (Math.random() - 0.5) * 0.01 + 0.005,
+        fallSpeedX: (Math.random() - 0.5) * 0.01,
+        riseSpeedY: Math.random() * 0.005 + 0.001
+      });
+    }
+    camera.position.z = 5;
+    // アニメーション関数
+    const animate = function() {
+      requestAnimationFrame(animate);
+      flowerPetals.forEach((petal, i) => {
+        petal.rotation.x += petalSpeeds[i].rotationSpeedX;
+        petal.rotation.y += petalSpeeds[i].rotationSpeedY;
+        petal.rotation.z += petalSpeeds[i].rotationSpeedZ;
+        // 上昇する動き
+        petal.position.x += petalSpeeds[i].fallSpeedX; // X方向の移動
+        petal.position.y += petalSpeeds[i].riseSpeedY; // Y方向の上昇
+        // 一定以上に上昇したら、元の位置に戻す
+        if (petal.position.y > 5) {
+          petal.position.y = 0;
+          petal.position.x = (Math.random() - 0.5) * 10;
+          petal.position.z = (Math.random() - 0.5) * 10;
+        }
+      });
+      renderer.render(scene, camera);
+    };
+    animate();
+    // ウィンドウのリサイズ時にcanvasのサイズを調整
+    window.addEventListener('resize', () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      renderer.setSize(width, height);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    });
+  </script>
+</body>
+
+</html>

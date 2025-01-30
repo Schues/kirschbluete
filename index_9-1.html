@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>桜の花びらアニメーション</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        #myCanvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="myCanvas"></canvas>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script>
+        window.addEventListener("DOMContentLoaded", init);
+
+        function init() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const canvasElement = document.querySelector('#myCanvas');
+            
+            // WebGLレンダラーの設定
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, canvas: canvasElement });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(width, height);
+            renderer.setClearColor(0x000000, 0);
+
+            // シーンの作成
+            const scene = new THREE.Scene();
+
+            // カメラの設定
+            const camera = new THREE.PerspectiveCamera(30, width / height, 1, 500);
+            camera.position.set(0, 15, 50);
+
+            // 環境光の追加
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+            scene.add(ambientLight);
+
+            const petals = []; // 花びらの配列
+            const rippleEffects = []; // 波紋エフェクトの配列
+
+            // マウス移動イベントのリスナーを追加
+            window.addEventListener('mousemove', (event) => {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                let mouseX = (event.clientX / width) * 50 - 25;
+                let mouseY = -(event.clientY / height) * 50 + 25;
+                rippleEffects.push({ x: mouseX, y: mouseY, radius: 0, progress: 0 });
+            });
+
+            // GLTFモデルのロード
+            const gltfLoader = new THREE.GLTFLoader();
+            gltfLoader.load('kirschbluede_1.glb', (gltf) => {
+                for (let i = 0; i < 70; i++) {
+                    const petal = gltf.scene.clone();
+                    let scale = Math.random() * 0.8 + 0.5;
+                    petal.scale.set(scale, scale, scale);
+                    petal.position.set(
+                        Math.random() * 50 - 25,
+                        Math.random() * 60 - 20,
+                        Math.random() * 40 - 20
+                    );
+                    petal.rotation.set(
+                        Math.random() * Math.PI,
+                        Math.random() * Math.PI,
+                        Math.random() * Math.PI
+                    );
+                    petal.traverse((node) => {
+                        if (node.isMesh) {
+                            node.material.transparent = true;
+                            node.material.opacity = 0.3;
+                        }
+                    });
+                    petal.windSpeed = (Math.random() - 0.5) * 0.01;
+                    petals.push(petal);
+                    scene.add(petal);
+                }
+            });
+
+            function animatePetals() {
+                rippleEffects.forEach((ripple, index) => {
+                    ripple.progress += 0.05; // 波紋の広がる速度
+                    ripple.radius = 5 * (1 - Math.exp(-3 * ripple.progress));
+                    if (ripple.progress > 1) {
+                        rippleEffects.splice(index, 1);
+                    }
+                });
+
+                petals.forEach(petal => {
+                    rippleEffects.forEach(ripple => {
+                        let dx = petal.position.x - ripple.x;
+                        let dy = petal.position.y - ripple.y;
+                        let distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance < ripple.radius && distance > ripple.radius - 1) {
+                            let factor = Math.exp(-2 * (distance / 100));
+                            petal.position.x += dx * factor * 0.001; // 速度を30%アップ
+                            petal.position.y += dy * factor * 0.001;
+                        }
+                    });
+                    
+                    // ゆっくりと上昇する動き（1.5倍の速度に変更）
+                    petal.position.y += 0.0175;
+                    petal.position.x += petal.windSpeed;
+                    petal.rotation.x += 0.0005;
+                    petal.rotation.y += 0.0005;
+                    
+                    // 画面上部に達したら位置をリセット
+                    if (petal.position.y > 40) {
+                        petal.position.y = -20;
+                        petal.position.x = Math.random() * 50 - 25;
+                        petal.position.z = Math.random() * 40 - 20;
+                        petal.windSpeed = (Math.random() - 0.5) * 0.01;
+                    }
+                });
+            }
+
+            window.addEventListener('resize', () => {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                renderer.setSize(width, height);
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+            });
+
+            function tick() {
+                animatePetals();
+                renderer.render(scene, camera);
+                requestAnimationFrame(tick);
+            }
+
+            tick();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>桜の花びらアニメーション</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #myCanvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="myCanvas"></canvas>
+
+    <!-- Three.jsとGLTFローダーの読み込み -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+    <script>
+        window.addEventListener("DOMContentLoaded", init);
+
+        function init() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            // レンダラーの設定
+            const canvasElement = document.querySelector('#myCanvas');
+            const renderer = new THREE.WebGLRenderer({
+                antialias: true,
+                alpha: true,
+                canvas: canvasElement,
+            });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(width, height);
+            renderer.setClearColor(0x000000, 0);
+
+            // シーンの作成
+            const scene = new THREE.Scene();
+
+            // カメラの作成（固定）
+            const camera = new THREE.PerspectiveCamera(30, width / height, 1, 500);
+            camera.position.set(0, 15, 50);
+
+            // 環境光
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+            scene.add(ambientLight);
+
+            // 花びらの配列
+            const petals = [];
+
+            // GLTFローダー
+            const gltfLoader = new THREE.GLTFLoader();
+            gltfLoader.load('kirschbluede_1.glb', (gltf) => {
+                for (let i = 0; i < 70; i++) {
+                    const petal = gltf.scene.clone();
+                    let scale = Math.random() * 0.8 + 0.5;
+                    petal.scale.set(scale, scale, scale);
+
+                    // 初期位置設定（画面全体に分布）
+                    petal.position.set(
+                        Math.random() * 50 - 25,  // X軸: -25 ～ 25
+                        Math.random() * 60 - 20,  // Y軸: -20 ～ 40
+                        Math.random() * 40 - 20   // Z軸: -20 ～ 20
+                    );
+
+                    petal.rotation.set(
+                        Math.random() * Math.PI,
+                        Math.random() * Math.PI,
+                        Math.random() * Math.PI
+                    );
+
+                    // **透明度を適用**
+                    petal.traverse((node) => {
+                        if (node.isMesh) {
+                            node.material.transparent = true;
+                            node.material.opacity = 0.3;
+                        }
+                    });
+
+                    // **個別の風の影響を持たせる**
+                    petal.windSpeed = (Math.random() - 0.5) * 0.02; // 風の速度（-0.01～0.01）
+
+                    petals.push(petal);
+                    scene.add(petal);
+                }
+            });
+
+            // アニメーション処理
+            function animatePetals() {
+                petals.forEach(petal => {
+                    // 舞い上がる動き
+                    petal.position.y += 0.02;
+
+                    // **ゆるやかな風の影響（左右に揺れる）**
+                    petal.position.x += petal.windSpeed; // 少しずつ横にずれる
+
+                    // 回転
+                    petal.rotation.x += 0.005;
+                    petal.rotation.y += 0.003;
+
+                    // 上に行きすぎたらリセット
+                    if (petal.position.y > 40) {
+                        petal.position.y = -20;
+                        petal.position.x = Math.random() * 50 - 25;
+                        petal.position.z = Math.random() * 40 - 20;
+                        petal.windSpeed = (Math.random() - 0.5) * 0.02; // 新しい風の影響
+                    }
+                });
+            }
+
+            // ウィンドウサイズ変更対応
+            window.addEventListener('resize', () => {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                renderer.setSize(width, height);
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+            });
+
+            // 描画ループ
+            function tick() {
+                animatePetals();
+                renderer.render(scene, camera);
+                requestAnimationFrame(tick);
+            }
+
+            tick();
+        }
+    </script>
+</body>
+
+</html>

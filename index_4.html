@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      /* スクロールバーを隠す */
+      height: 100vh;
+      /* 高さを100%に */
+      width: 100%;
+      /* 幅を100%に */
+    }
+    canvas {
+  display: block;
+  width: 100vw;   /* ビューポートの幅に合わせる */
+  height: 100vh;  /* ビューポートの高さに合わせる */
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+  </style>
+
+
+
+  <!-- cdnの読み込み -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/examples/js/postprocessing/EffectComposer.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/examples/js/postprocessing/RenderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+  <script>
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+  // アンチエイリアスを有効化
+  const renderer = new THREE.WebGLRenderer({
+    alpha: true,
+    antialias: true
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x000000, 0); // 背景を透明にする
+  document.body.appendChild(renderer.domElement);
+
+  const flowerPetals = [];
+  const numPetals = 30; // 花びらの数
+
+  const loader = new THREE.GLTFLoader();
+  const petalSpeeds = [];
+
+  // GLBファイルの読み込み
+  loader.load('path/to/your/kirschbluede_1.glb', function(gltf) {
+    const model = gltf.scene;
+
+    // 3Dモデル（花びら）を複製してシーンに配置
+    for (let i = 0; i < numPetals; i++) {
+      const petal = model.clone(); // モデルを複製
+      petal.position.set(
+        (Math.random() - 0.5) * 10, // 横方向の範囲
+        Math.random() * 5, // 縦方向の範囲
+        (Math.random() - 0.5) * 10 // 奥行きの範囲
+      );
+      petal.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+      scene.add(petal);
+      flowerPetals.push(petal);
+      petalSpeeds.push({
+        rotationSpeedX: (Math.random() - 0.5) * 0.01 + 0.005,
+        rotationSpeedY: (Math.random() - 0.5) * 0.01 + 0.005,
+        rotationSpeedZ: (Math.random() - 0.5) * 0.01 + 0.005,
+        fallSpeedX: (Math.random() - 0.5) * 0.01,
+        riseSpeedY: Math.random() * 0.005 + 0.001
+      });
+    }
+
+    camera.position.z = 5;
+
+    // アニメーション関数
+    const animate = function() {
+      requestAnimationFrame(animate);
+      flowerPetals.forEach((petal, i) => {
+        petal.rotation.x += petalSpeeds[i].rotationSpeedX;
+        petal.rotation.y += petalSpeeds[i].rotationSpeedY;
+        petal.rotation.z += petalSpeeds[i].rotationSpeedZ;
+        // 上昇する動き
+        petal.position.x += petalSpeeds[i].fallSpeedX; // X方向の移動
+        petal.position.y += petalSpeeds[i].riseSpeedY; // Y方向の上昇
+        // 一定以上に上昇したら、元の位置に戻す
+        if (petal.position.y > 5) {
+          petal.position.y = 0;
+          petal.position.x = (Math.random() - 0.5) * 10;
+          petal.position.z = (Math.random() - 0.5) * 10;
+        }
+      });
+      renderer.render(scene, camera);
+    };
+    animate();
+
+  }, undefined, function(error) {
+    console.error(error);
+  });
+
+  // ウィンドウのリサイズ時にcanvasのサイズを調整
+  window.addEventListener('resize', () => {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    renderer.setSize(width, height);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+  });
+</script>
+</body>
+
+</html>

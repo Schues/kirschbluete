@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D 桜の花びらアニメーション</title>
+  <style>
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      height: 100vh;
+      background: linear-gradient(to bottom, #ffe6f0, #ffffff);
+    }
+  </style>
+</head>
+
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // --- Three.js 初期設定 ---
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // --- 花びらの設定 ---
+    const petals = [];
+    const numPetals = 50;
+    const petalSpeeds = [];
+
+    // 花びらの形状を作成
+    const createPetalGeometry = () => {
+      const geometry = new THREE.Shape();
+      geometry.moveTo(0, 0);
+      geometry.bezierCurveTo(0.1, 0.15, 0.3, 0.15, 0.25, 0);
+      geometry.bezierCurveTo(0.4, -0.5, 0.2, -0.5, 0, 0);
+      return new THREE.ShapeGeometry(geometry);
+    };
+
+    const petalMaterial = new THREE.MeshBasicMaterial({
+      color: 0xf8c8dc,
+      transparent: true,
+      opacity: 0.85,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+
+    // 花びらを生成
+    for (let i = 0; i < numPetals; i++) {
+      const petal = new THREE.Mesh(createPetalGeometry(), petalMaterial);
+      petal.scale.set(0.2, 0.4, 0.2);
+      petal.position.set(
+        (Math.random() - 0.5) * 10,
+        Math.random() * 5,
+        (Math.random() - 0.5) * 10
+      );
+      petal.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+      scene.add(petal);
+      petals.push(petal);
+      petalSpeeds.push({
+        rotationX: (Math.random() - 0.5) * 0.02,
+        rotationY: (Math.random() - 0.5) * 0.02,
+        rotationZ: (Math.random() - 0.5) * 0.02,
+        driftX: (Math.random() - 0.5) * 0.01,
+        fallSpeed: Math.random() * 0.01 + 0.005,
+      });
+    }
+
+    camera.position.z = 5;
+
+    // --- アニメーション関数 ---
+    const animate = () => {
+      requestAnimationFrame(animate);
+
+      petals.forEach((petal, index) => {
+        const speed = petalSpeeds[index];
+        petal.rotation.x += speed.rotationX;
+        petal.rotation.y += speed.rotationY;
+        petal.rotation.z += speed.rotationZ;
+
+        petal.position.x += speed.driftX;
+        petal.position.y -= speed.fallSpeed;
+
+        // 花びらが画面外に出たら再配置
+        if (petal.position.y < -5) {
+          petal.position.set(
+            (Math.random() - 0.5) * 10,
+            5,
+            (Math.random() - 0.5) * 10
+          );
+        }
+      });
+
+      renderer.render(scene, camera);
+    };
+
+    animate();
+    
+
+    // --- ウィンドウリサイズ対応 ---
+    window.addEventListener("resize", () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      renderer.setSize(width, height);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    });
+  </script>
+</body>
+
+</html>

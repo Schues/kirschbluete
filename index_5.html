@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タイトル</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #myCanvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="myCanvas"></canvas>
+
+    <!-- cdnの読み込み -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script>
+
+        //init 関数を実行するイベントリスナーを設定     
+        window.addEventListener("DOMContentLoaded", init);
+
+        function init() {
+
+            //ウィンドウの幅と高さを取得し、width と height という変数に格納
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            // レンダラーの設定
+            const canvasElement = document.querySelector('#myCanvas');
+            const renderer = new THREE.WebGLRenderer({
+                antialias: true,
+                canvas: canvasElement,
+            });
+
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(width, height);
+            renderer.shadowMap.enabled = true;
+            renderer.physicallyCorrectLights = true;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+            // シーンの作成
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+
+            // カメラの作成
+            const camera = new THREE.PerspectiveCamera(30, width / height, 1, 500);
+            camera.position.set(60, 15, 30);
+
+            // カメラコントローラーの作成
+            const controls = new THREE.OrbitControls(camera, canvasElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.2;
+
+            // 環境光源の作成
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            
+            let model; // モデルを格納する変数
+            const lights = []; // ライトを格納する配列
+
+            // ウィンドウサイズ変更時の対応
+            window.addEventListener('resize', () => {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                renderer.setSize(width, height);
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+            });
+
+            // 3Dモデルの読み込み
+            const gltfLoader = new THREE.GLTFLoader();
+            gltfLoader.load('kirschbluede_1.glb', (gltf) => {
+                model = gltf.scene;
+
+                // モデル内のライトをリストに収集
+                model.traverse((obj) => {
+                    if (obj.isMesh) {
+                        obj.castShadow = true;
+                        obj.receiveShadow = true;
+                    }
+                    if (obj.isLight) {
+                        lights.push(obj);
+                    }
+                });
+
+                // GLBファイル内のライトのプロパティをもとに新しいライトを作成してシーンに追加
+                lights.forEach((light) => {
+                    let newLight = new THREE.PointLight(light.color, light.intensity, light.distance, light.decay);
+                    newLight.position.copy(light.position);
+                    newLight.castShadow = true;
+                    newLight.shadow.mapSize.width = 1024;
+                    newLight.shadow.mapSize.height = 1024;
+                    newLight.shadow.radius = 30;
+
+                    // 明るさ（intensity）の調整
+                    newLight.intensity = light.intensity = 400;
+                    scene.add(newLight);
+                });
+
+                // モデルをシーンに追加
+                scene.add(model);
+                model.scale.set(1, 1, 1);
+                model.position.set(0, -7, 0);
+
+
+            }, undefined, (error) => {
+                console.error('GLBモデルの読み込み中にエラーが発生しました', error);
+            });
+
+            // アニメーションループ
+            function tick() {
+                controls.update();
+                renderer.render(scene, camera);
+                requestAnimationFrame(tick);
+            }
+
+            tick(); // 初回呼び出し
+        }
+    </script>
+</body>
+
+</html>
